@@ -143,6 +143,7 @@ static int uses_numbered_reports(__u8 *report_descriptor, __u32 size) {
 	unsigned int i = 0;
 	int size_code;
 	int data_len, key_size;
+	printf("F: %s\n", __func__);
 
 	while (i < size) {
 		int key = report_descriptor[i];
@@ -208,6 +209,7 @@ parse_uevent_info(const char *uevent, int *bus_type,
 	unsigned short *vendor_id, unsigned short *product_id,
 	char **serial_number_utf8, char **product_name_utf8)
 {
+	printf("F: %s\n", __func__);
 	char *tmp = strdup(uevent);
 	char *saveptr = NULL;
 	char *line;
@@ -224,10 +226,13 @@ parse_uevent_info(const char *uevent, int *bus_type,
 		key = line;
 		value = strchr(line, '=');
 		if (!value) {
+			printf("goto next line\n");
 			goto next_line;
 		}
 		*value = '\0';
 		value++;
+
+		printf("key=%s value=%s\n", key, value);
 
 		if (strcmp(key, "HID_ID") == 0) {
 			/**
@@ -253,12 +258,15 @@ next_line:
 	}
 
 	free(tmp);
+
+	printf("found_id %d found_name %d found_serial %d\n", found_id, found_name, found_serial);
 	return (found_id && found_name && found_serial);
 }
 
 
 static int get_device_string(hid_device *dev, enum device_string_id key, wchar_t *string, size_t maxlen)
 {
+	printf("F: %s\n", __func__);
 	struct udev *udev;
 	struct udev_device *udev_dev, *parent, *hid_dev;
 	struct stat s;
@@ -299,6 +307,7 @@ static int get_device_string(hid_device *dev, enum device_string_id key, wchar_t
 			           &product_name_utf8);
 
 			if (bus_type == BUS_BLUETOOTH) {
+				printf("parsed a Bluetooth device\n");
 				switch (key) {
 					case DEVICE_STRING_MANUFACTURER:
 						wcsncpy(string, L"", maxlen);
@@ -375,6 +384,7 @@ int HID_API_EXPORT hid_init(void)
 
 int HID_API_EXPORT hid_exit(void)
 {
+	printf("F: %s\n", __func__);
 	/* Nothing to do for this in the Linux/hidraw implementation. */
 	return 0;
 }
@@ -389,6 +399,8 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 	struct hid_device_info *root = NULL; /* return object */
 	struct hid_device_info *cur_dev = NULL;
 	struct hid_device_info *prev_dev = NULL; /* previous device */
+
+	printf("F: %s vid %d pid %d\n", __func__, vendor_id, product_id);
 
 	hid_init();
 
@@ -445,13 +457,26 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 			&serial_number_utf8,
 			&product_name_utf8);
 
+		/* Workaround Linux assigning wrong VID and PID */
+		// TODO: find root cause
+		// TODO: pass the name to hidapi when opening
+		if (!dev_vid && !dev_pid) {
+			if (wcscmp("Mouse nRF52 Desktop", product_name_utf8) == 0) {
+				// TODO: assign VID and PID
+			}
+		}
+
+		printf("bus type=%d vid=%d pid=%d, BLUETOOTH=%d\n", bus_type, dev_vid, dev_pid, BUS_BLUETOOTH);
+
 		if (!result) {
 			/* parse_uevent_info() failed for at least one field. */
+			printf("parse_uevent_info() failed for at least one field.\n");
 			goto next;
 		}
 
 		if (bus_type != BUS_USB && bus_type != BUS_BLUETOOTH) {
 			/* We only know how to handle USB and BT devices. */
+			printf("We only know how to handle USB and BT devices.\n");
 			goto next;
 		}
 
@@ -461,6 +486,7 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 			struct hid_device_info *tmp;
 
 			/* VID/PID match. Create the record. */
+			printf("VID/PID match. Create the record.\n");
 			tmp = malloc(sizeof(struct hid_device_info));
 			if (cur_dev) {
 				cur_dev->next = tmp;
@@ -490,6 +516,7 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 
 			switch (bus_type) {
 				case BUS_USB:
+					printf("enumerated USB device\n");
 					/* The device pointed to by raw_dev contains information about
 					   the hidraw device. In order to get information about the
 					   USB device, get the parent device with the
@@ -541,12 +568,14 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 
 				case BUS_BLUETOOTH:
 					/* Manufacturer and Product strings */
+					printf("enumerated Bluetooth device %s\n", product_name_utf8);
 					cur_dev->manufacturer_string = wcsdup(L"");
 					cur_dev->product_string = utf8_to_wchar_t(product_name_utf8);
 
 					break;
 
 				default:
+					printf("enumerated UNKNOWN device %s", product_name_utf8);
 					/* Unknown device type - this should never happen, as we
 					 * check for USB and Bluetooth devices above */
 					break;
@@ -570,6 +599,7 @@ struct hid_device_info  HID_API_EXPORT *hid_enumerate(unsigned short vendor_id, 
 
 void  HID_API_EXPORT hid_free_enumeration(struct hid_device_info *devs)
 {
+	printf("F: %s\n", __func__);
 	struct hid_device_info *d = devs;
 	while (d) {
 		struct hid_device_info *next = d->next;
@@ -588,18 +618,22 @@ hid_device * hid_open(unsigned short vendor_id, unsigned short product_id, const
 	const char *path_to_open = NULL;
 	hid_device *handle = NULL;
 
+	printf("F: %s vid %x pid %x\n", __func__, vendor_id, product_id);
+
 	devs = hid_enumerate(vendor_id, product_id);
 	cur_dev = devs;
 	while (cur_dev) {
 		if (cur_dev->vendor_id == vendor_id &&
 		    cur_dev->product_id == product_id) {
 			if (serial_number) {
+				printf("open by SN\n");
 				if (wcscmp(serial_number, cur_dev->serial_number) == 0) {
 					path_to_open = cur_dev->path;
 					break;
 				}
 			}
 			else {
+				printf("open by path\n");
 				path_to_open = cur_dev->path;
 				break;
 			}
@@ -619,6 +653,7 @@ hid_device * hid_open(unsigned short vendor_id, unsigned short product_id, const
 
 hid_device * HID_API_EXPORT hid_open_path(const char *path)
 {
+	printf("F: %s path %s\n", __func__, path);
 	hid_device *dev = NULL;
 
 	hid_init();
@@ -667,6 +702,7 @@ hid_device * HID_API_EXPORT hid_open_path(const char *path)
 
 int HID_API_EXPORT hid_write(hid_device *dev, const unsigned char *data, size_t length)
 {
+	printf("F: %s\n", __func__);
 	int bytes_written;
 
 	bytes_written = write(dev->device_handle, data, length);
@@ -677,6 +713,7 @@ int HID_API_EXPORT hid_write(hid_device *dev, const unsigned char *data, size_t 
 
 int HID_API_EXPORT hid_read_timeout(hid_device *dev, unsigned char *data, size_t length, int milliseconds)
 {
+	printf("F: %s\n", __func__);
 	int bytes_read;
 
 	if (milliseconds >= 0) {
@@ -723,6 +760,7 @@ int HID_API_EXPORT hid_read_timeout(hid_device *dev, unsigned char *data, size_t
 
 int HID_API_EXPORT hid_read(hid_device *dev, unsigned char *data, size_t length)
 {
+	printf("F: %s\n", __func__);
 	return hid_read_timeout(dev, data, length, (dev->blocking)? -1: 0);
 }
 
@@ -739,6 +777,7 @@ int HID_API_EXPORT hid_set_nonblocking(hid_device *dev, int nonblock)
 
 int HID_API_EXPORT hid_send_feature_report(hid_device *dev, const unsigned char *data, size_t length)
 {
+	printf("F: %s\n", __func__);
 	int res;
 
 	res = ioctl(dev->device_handle, HIDIOCSFEATURE(length), data);
@@ -750,6 +789,7 @@ int HID_API_EXPORT hid_send_feature_report(hid_device *dev, const unsigned char 
 
 int HID_API_EXPORT hid_get_feature_report(hid_device *dev, unsigned char *data, size_t length)
 {
+	printf("F: %s\n", __func__);
 	int res;
 
 	res = ioctl(dev->device_handle, HIDIOCGFEATURE(length), data);
@@ -763,6 +803,7 @@ int HID_API_EXPORT hid_get_feature_report(hid_device *dev, unsigned char *data, 
 
 void HID_API_EXPORT hid_close(hid_device *dev)
 {
+	printf("F: %s\n", __func__);
 	if (!dev)
 		return;
 	close(dev->device_handle);
@@ -787,11 +828,13 @@ int HID_API_EXPORT_CALL hid_get_serial_number_string(hid_device *dev, wchar_t *s
 
 int HID_API_EXPORT_CALL hid_get_indexed_string(hid_device *dev, int string_index, wchar_t *string, size_t maxlen)
 {
+	printf("F: %s\n", __func__);
 	return -1;
 }
 
 
 HID_API_EXPORT const wchar_t * HID_API_CALL  hid_error(hid_device *dev)
 {
+	printf("F: %s\n", __func__);
 	return NULL;
 }
