@@ -150,7 +150,7 @@ git clone git://github.com/libusb/hidapi.git
 ```
 
 ## API documentation
-[HIDAPI Documentation](./docs/group__API.html).
+HIDAPI documentation is [available here](./docs/group__API.html).
 
 ## Build Instructions
 
