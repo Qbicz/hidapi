@@ -7,8 +7,6 @@ Text can be **bold**, _italic_, or ~~strikethrough~~.
 API documentation:
 [Doxygen index.html](./doc/index.html).
 
-# Header 1
-
 HIDAPI is a multi-platform library which allows an application to interface with USB and Bluetooth HID-Class devices on Windows, Linux, FreeBSD, and macOS. HIDAPI can be either built as a shared library (.so, .dll or .dylib) or can be embedded directly into a target application by adding a single source file (per platform) and a single header.
 
 HIDAPI library was originally developed by Alan Ott (signal11).
