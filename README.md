@@ -16,6 +16,9 @@ HIDAPI library was originally developed by Alan Ott ([signal11](https://github.c
 
 It was moved to [libusb/hidapi](https://github.com/libusb/hidapi) on June 4th, 2019, in order to merge important bugfixes and continue development of the library.
 
+Documentation:
+[Doxygen index.html](./doc/index.html).
+
 ## Table of Contents
 
 * [About](#about)
