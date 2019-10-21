@@ -16,15 +16,13 @@ HIDAPI library was originally developed by Alan Ott ([signal11](https://github.c
 
 It was moved to [libusb/hidapi](https://github.com/libusb/hidapi) on June 4th, 2019, in order to merge important bugfixes and continue development of the library.
 
-Documentation:
-[Doxygen index.html](./docs/index.html).
-
 ## Table of Contents
 
 * [About](#about)
 * [What Does the API Look Like?](#what-does-the-api-look-like)
 * [License](#license)
 * [Download](#download)
+* [API Documentation](#api-documentation)
 * [Build Instructions](#build-instructions)
     * [Prerequisites](#prerequisites)
     * [Linux](#linux)
@@ -150,6 +148,9 @@ HIDAPI can be downloaded from GitHub
 ```sh
 git clone git://github.com/libusb/hidapi.git
 ```
+
+## API documentation
+[HIDAPI Documentation](./docs/group__API.html).
 
 ## Build Instructions
 
